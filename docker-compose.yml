@@ -1,0 +1,35 @@
+version: '3.6'
+services:
+  golang-docker:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8080:8080"
+    tty: true
+    volumes:
+       - ./:/go/src/github.com/nxsw/golang-revel-docker-compose/
+      # - golang-sync:/go/src/nxsw
+    networks:
+      - revel_network
+
+  mysql:
+    build: ./mysql/
+    expose:
+      - 3306
+    ports:
+      - '3306:3306'
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - ./mysql/data:/var/lib/mysql
+    networks:
+      - revel_network
+
+networks:
+  revel_network:
+    external: true
+
+# volumes:
+#   golang-sync:
+#     external: true

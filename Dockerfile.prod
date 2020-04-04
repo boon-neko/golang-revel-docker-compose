@@ -1,0 +1,64 @@
+FROM debian:stable-slim
+
+ENV GOLANG_VERSION 1.12.6
+ENV GOLANG_SHA256SUM dbcf71a3c1ea53b8d54ef1b48c85a39a6c9a935d01fc8291ff2b92028e59913c
+
+ENV GOPATH=/go
+ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
+ENV CGO_LDFLAGS="-Wl,-rpath=/usr/local/lib"
+
+ENV DEBIAN_FRONTEND noninteractive
+ENV TERM linux
+ENV INITRD No
+ENV LANG C.UTF-8
+
+RUN apt-get update -yqq && \
+    apt-get install apt-file bash -yqq && \
+    apt-get install -yqq --no-install-recommends \
+        make \
+        gcc \
+        g++ \
+        git \
+        curl \
+        ca-certificates \
+        xz-utils && \
+    apt-get clean && \
+    rm -rf \
+        /var/lib/apt/lists/* \
+        /tmp/* \
+        /var/tmp/* \
+        /usr/share/man \
+        /usr/share/doc \
+        /usr/share/doc-base && \
+    \
+    \
+    cd /usr/local/src && \
+    curl -fsSL https://golang.org/dl/go${GOLANG_VERSION}.linux-amd64.tar.gz -o golang.tar.gz && \
+    echo "${GOLANG_SHA256SUM} golang.tar.gz" | sha256sum -c - && \
+    tar -C /usr/local -xzf golang.tar.gz && \
+    rm -rf /usr/local/src/* && \
+    go get -u github.com/golang/dep/cmd/dep  && \
+    go get -u github.com/revel/cmd/revel
+
+VOLUME /go/src/github.com/nxsw/golang-revel-docker-compose/
+WORKDIR /go/src/github.com/nxsw/golang-revel-docker-compose/
+
+WORKDIR /go/src/github.com/nxsw
+
+ADD app /go/src/github.com/nxsw/golang-revel-docker-compose/app
+ADD conf /go/src/github.com/nxsw/golang-revel-docker-compose/conf
+ADD messages /go/src/github.com/nxsw/golang-revel-docker-compose/messages
+ADD public /go/src/github.com/nxsw/golang-revel-docker-compose/public
+ADD go.mod /go/src/github.com/nxsw/golang-revel-docker-compose/go.mod
+ADD go.sum /go/src/github.com/nxsw/golang-revel-docker-compose/go.sum
+
+RUN cd /go/src/github.com/nxsw/golang-revel-docker-compose/ && \
+    dep ensure
+
+RUN cd /go && \
+    export GO111MODULE=auto &&  \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 revel build github.com/nxsw/golang-revel-docker-compose /go/prod/ -m prod && \
+    rm -rf /go/src/github.com/nxsw/golang-revel-docker-compose && \
+    rm -rf /go/src/*
+
+ADD messages /go/prod/src/github.com/nxsw/golang-revel-docker-compose/messages
